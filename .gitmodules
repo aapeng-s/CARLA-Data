@@ -1,0 +1,3 @@
+[submodule "carla1s"]
+	path = carla1s
+	url = git@github.com:OpenAVP/carla1s.git
