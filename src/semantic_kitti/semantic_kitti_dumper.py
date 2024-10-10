@@ -64,7 +64,7 @@ class SemanticKittiDumper(DatasetDumper):
         """创建标定文件."""
         pass
 
-    def _dump_image(self, bind: DatasetDumper.SensorTargetPair):
+    def _dump_image(self, bind: ImageTargetPair):
         # 阻塞等待传感器更新
         bind.sensor.on_data_ready.wait()
         # 储存数据
@@ -74,7 +74,7 @@ class SemanticKittiDumper(DatasetDumper):
         # 打印日志
         self.logger.debug(f"[frame={bind.sensor.data.frame}] Dumped image to {path}")
 
-    def _dump_semantic_lidar(self, bind: DatasetDumper.SemanticLidarTargetPair):
+    def _dump_semantic_lidar(self, bind: SemanticLidarTargetPair):
         # 阻塞等待传感器更新
         bind.sensor.on_data_ready.wait()
         
