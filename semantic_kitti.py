@@ -7,8 +7,9 @@ from packages.carla1s.tf import Transform
 from src.semantic_kitti import SemanticKittiDumper
 
 
-def main():
-    with CarlaContext(host='10.0.0.110', log_level=logging.DEBUG) as cc, ManualExecutor(cc) as exe:        
+def main(*, fps: int = 20):   
+
+    with CarlaContext(host='10.0.0.110', log_level=logging.DEBUG) as cc, ManualExecutor(cc, fixed_delta_seconds=1/fps) as exe:        
         ego_vehicle: Vehicle = (cc.actor_factory
             .create(Vehicle, from_blueprint='vehicle.tesla.model3')
             .with_name("ego_vehicle")
@@ -50,6 +51,7 @@ def main():
             .with_name("semantic_lidar")
             .with_transform(semantic_lidar_tf)
             .with_parent(ego_vehicle)
+            .with_attributes(rotation_frequency=fps)
             .build())
             
         cc.all_actors_spawn().all_sensors_listen()
