@@ -67,6 +67,7 @@ def main(*, fps: int = 20):
         dumper.bind_camera(cam_0_depth, "image_2")
         dumper.bind_camera(cam_1_depth, "image_3")
         dumper.bind_semantic_lidar(semantic_lidar, "velodyne", "label")
+        dumper.bind_timestamp(cam_0_rgb, "times.txt")
         
         dumper.create_sequence()
         
