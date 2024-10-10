@@ -257,7 +257,7 @@ class SemanticKittiDumper(DatasetDumper):
             
             # 保存到文件
             with open(path, 'a') as calibfile:
-                calibfile.write("P{idx}:")
+                calibfile.write(f"P{idx}:")
                 string = ' '.join(['{:.12e}'.format(value) for row in P for value in row])
                 calibfile.write(string + "\n")
                 self.logger.debug(f"[frame={cam.data.frame}] Dumped calib P{idx} to {path}")
