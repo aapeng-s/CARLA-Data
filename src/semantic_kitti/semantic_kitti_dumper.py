@@ -35,9 +35,9 @@ class SemanticKittiDumper(DatasetDumper):
         self._current_frame_count += 1
         self._promises = []
         for bind in self.binds:
-            if isinstance(bind, DatasetDumper.SemanticLidarTargetPair):
+            if isinstance(bind, self.SemanticLidarTargetPair):
                 self._promises.append(self.thread_pool.submit(self._dump_semantic_lidar, bind))
-            else:
+            elif isinstance(bind, self.ImageTargetPair):
                 self._promises.append(self.thread_pool.submit(self._dump_image, bind))
 
         return self
