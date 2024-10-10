@@ -58,7 +58,7 @@ def main(*, fps: int = 20):
         exe.wait_ticks(1)
         
         ego_vehicle.set_autopilot(True)
-        exe.wait_ticks(20)
+        exe.wait_ticks(1)
         
         # SETUP DUMPER
         dumper = SemanticKittiDumper('/home/garry/Workspace/Temp/semantic_kitti')
@@ -69,11 +69,12 @@ def main(*, fps: int = 20):
         dumper.bind_semantic_lidar(semantic_lidar, "velodyne", "label")
         dumper.bind_timestamp(cam_0_rgb, "times.txt")
         dumper.bind_pose(cam_0_rgb, "pose.txt")
+        dumper.bind_calib(semantic_lidar, "calib.txt")
 
         dumper.create_sequence()
         
         
-        for i in range(15):
+        for i in range(3):
             exe.wait_ticks(1)
             dumper.create_frame().join()
 

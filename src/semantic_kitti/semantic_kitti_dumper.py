@@ -27,6 +27,10 @@ class SemanticKittiDumper(DatasetDumper):
     class ImageTargetPair(DatasetDumper.SensorTargetPair):
         pass
     
+    @dataclass
+    class CalibTargetPair(DatasetDumper.SensorTargetPair):
+        pass
+    
     def __init__(self, root_path: str, max_workers: int = 3):
         super().__init__(root_path, max_workers)
         self._timestamp_offset: Optional[float] = None
@@ -45,10 +49,12 @@ class SemanticKittiDumper(DatasetDumper):
         self._current_frame_count += 1
         self._promises = []
         
-        # 处理第一帧的特殊情况, 标记 offset 为 None
+        # 处理第一帧的特殊情况, 标记 offset 为 None，并创建 calib 文件  
         if self._current_frame_count == 1:
             self._timestamp_offset = None
             self._pose_offset = None
+            self._setup_calib_file()
+
         for bind in self.binds:
             if isinstance(bind, self.SemanticLidarTargetPair):
                 self._promises.append(self.thread_pool.submit(self._dump_semantic_lidar, bind))
@@ -78,6 +84,11 @@ class SemanticKittiDumper(DatasetDumper):
         if os.path.splitext(path)[1] == '':
             raise ValueError(f"Path {path} is a folder, not a file.")
         self.binds.append(self.PoseTargetPair(sensor, path))
+        
+    def bind_calib(self, sensor: Sensor, path: str):
+        if os.path.splitext(path)[1] == '':
+            raise ValueError(f"Path {path} is a folder, not a file.")
+        self.binds.append(self.CalibTargetPair(sensor, path))
 
     def _setup_content_folder(self):
         """创建内容文件夹."""
@@ -97,7 +108,14 @@ class SemanticKittiDumper(DatasetDumper):
 
     def _setup_calib_file(self):
         """创建标定文件."""
-        pass
+        # 寻找 calib bind 和 pose bind
+        calib_bind = next((bind for bind in self.binds if isinstance(bind, self.CalibTargetPair)), None)
+        pose_bind = next((bind for bind in self.binds if isinstance(bind, self.PoseTargetPair)), None)
+        
+        if calib_bind is None or pose_bind is None:
+            raise ValueError("Calib bind or pose bind not found")
+        
+        self._promises.append(self.thread_pool.submit(self._dump_calib, calib_bind, pose_bind))
 
     def _dump_image(self, bind: ImageTargetPair):
         # 阻塞等待传感器更新
@@ -188,3 +206,66 @@ class SemanticKittiDumper(DatasetDumper):
         with open(path, 'a') as f:
             f.write(f"{pose_matrix}\n")
         self.logger.debug(f"[frame={bind.sensor.data.frame}] Dumped pose to {path}")
+
+    def _dump_calib(self, bind_calib: CalibTargetPair, bind_pose: PoseTargetPair):
+        # 阻塞等待传感器更新
+        bind_calib.sensor.on_data_ready.wait()
+        bind_pose.sensor.on_data_ready.wait()
+        
+        # 准备对象
+        target = bind_calib.sensor
+        cam_0 = bind_pose.sensor
+        other_cams = set(bind.sensor for bind in self.binds if isinstance(bind, self.ImageTargetPair) and bind.sensor != cam_0)
+        # 确保cam_0在第一位
+        cams = [cam_0] + list(other_cams)
+        
+        # 准备储存路径
+        path = os.path.join(self.current_sequence_path, bind_calib.data_path)
+        
+        def compute_intrinsic_matrix(w, h, fov):
+            focal = w / (2.0 * np.tan(fov * np.pi / 360.0))
+            K = np.identity(3)
+            K[0, 0] = K[1, 1] = focal
+            K[0, 2] = w / 2.0
+            K[1, 2] = h / 2.0
+            K[2, 2] = 1
+            return K
+        
+        def compute_projection_matrix(K, R, t):
+            # extern matrix
+            RT = np.hstack((R, t))
+            # project matrix P = K[R|t]
+            P = np.dot(K, RT)
+            return P
+
+        # 处理相机
+        for idx, cam in enumerate(cams):
+            # 获取内参
+            image_width = int(cam.attributes['image_size_x'])
+            image_height = int(cam.attributes['image_size_y'])
+            fov = float(cam.attributes['fov'])
+            
+            # print(f"image_width: {image_width}, image_height: {image_height}, fov: {fov}")
+            
+            K = compute_intrinsic_matrix(image_width, image_height, fov)
+            
+            # 获取外参
+            T = np.dot(np.linalg.inv(cam_0.data.transform.matrix), cam.data.transform.matrix)
+            R = T[:3, :3]
+            t = T[:3, -1].reshape(3, 1)
+            P = compute_projection_matrix(K, R, t)
+            
+            # 保存到文件
+            with open(path, 'a') as calibfile:
+                calibfile.write("P{idx}:")
+                string = ' '.join(['{:.12e}'.format(value) for row in P for value in row])
+                calibfile.write(string + "\n")
+                self.logger.debug(f"[frame={cam.data.frame}] Dumped calib P{idx} to {path}")
+        
+        # 处理最终目标
+        T = np.dot(np.linalg.inv(cam_0.data.transform.matrix), target.data.transform.matrix)
+        with open(path, 'a') as calibfile:
+            calibfile.write("Tr:")
+            string = ' '.join(['{:.12e}'.format(value) for row in T for value in row])
+            calibfile.write(string + "\n")
+            self.logger.debug(f"[frame={bind_calib.sensor.data.frame}] Dumped calib Tr to {path}")
