@@ -48,7 +48,7 @@ class SemanticKittiDumper(DatasetDumper):
         # 储存数据
         file_name = f"{self.current_frame_name}.png"
         path = os.path.join(self.current_sequence_path, bind.data_path, file_name)
-        cv2.imwrite(path, bind.sensor.data.data)
+        cv2.imwrite(path, bind.sensor.data.content)
         # 打印日志
         self.logger.debug(f"[frame={bind.sensor.data.frame}] Dumped image to {path}")
 
