@@ -3,7 +3,7 @@ import cv2
 import numpy as np
 from dataclasses import dataclass
 
-from packages.carla1s.actors import RgbCamera, DepthCamera, SemanticLidar
+from packages.carla1s.actors import Sensor
 from packages.carla1s.tf import Point, CoordConverter
 
 from ..dataset_dumper import DatasetDumper
@@ -39,6 +39,8 @@ class SemanticKittiDumper(DatasetDumper):
                 self._promises.append(self.thread_pool.submit(self._dump_semantic_lidar, bind))
             elif isinstance(bind, self.ImageTargetPair):
                 self._promises.append(self.thread_pool.submit(self._dump_image, bind))
+            elif isinstance(bind, self.TimestampTargetPair):
+                self._promises.append(self.thread_pool.submit(self._dump_timestamp, bind))
 
         return self
     
@@ -50,11 +52,22 @@ class SemanticKittiDumper(DatasetDumper):
         self._binds.append(self.SemanticLidarTargetPair(sensor, data_path, label_path))
         return self
 
+    def bind_timestamp(self, sensor: Sensor, path: str):
+        if os.path.splitext(path)[1] == '':
+            raise ValueError(f"Path {path} is a folder, not a file.")
+        self.binds.append(self.TimestampTargetPair(sensor, path))
+
     def _setup_content_folder(self):
         """创建内容文件夹."""
         for bind in self.binds:
-            os.makedirs(os.path.join(self.current_sequence_path, bind.data_path))
-            self.logger.info(f"Created data path: {os.path.join(self.current_sequence_path, bind.data_path)}")
+            # 如果以扩展名结尾则创建文件，否则创建目录
+            if os.path.splitext(bind.data_path)[1] == '':
+                os.makedirs(os.path.join(self.current_sequence_path, bind.data_path))
+                self.logger.info(f"Created folder at: {os.path.join(self.current_sequence_path, bind.data_path)}")
+            else:
+                with open(os.path.join(self.current_sequence_path, bind.data_path), 'w') as f:
+                    f.write('')
+                    self.logger.info(f"Created file at: {os.path.join(self.current_sequence_path, bind.data_path)}")
             # 处理特殊项
             if isinstance(bind, self.SemanticLidarTargetPair):
                 os.makedirs(os.path.join(self.current_sequence_path, bind.label_path))
@@ -101,3 +114,15 @@ class SemanticKittiDumper(DatasetDumper):
         self.logger.debug(f"[frame={bind.sensor.data.frame}] Dumped pointcloud to {path_data}")
         self.logger.debug(f"[frame={bind.sensor.data.frame}] Dumped labels to {path_label}")
 
+    def _dump_timestamp(self, bind: DatasetDumper.SensorTargetPair):
+        """导出时间戳, 以秒为单位, 使用科学计数法, 保留小数点后 6 位.
+
+        Args:
+            bind (DatasetDumper.SensorTargetPair): 参考的传感器绑定
+        """
+        bind.sensor.on_data_ready.wait()
+        timestamp = bind.sensor.data.timestamp
+        with open(os.path.join(self.current_sequence_path, bind.data_path), 'a') as f:
+            f.write(f"{timestamp:.6e}\n")
+            
+        self.logger.debug(f"[frame={bind.sensor.data.frame}] Dumped timestamp to {os.path.join(self.current_sequence_path, bind.data_path)}, value: {timestamp:.6e}")
