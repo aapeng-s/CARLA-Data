@@ -16,10 +16,6 @@ class DatasetDumper(ABC):
     class SensorTargetPair:
         sensor: Sensor
         data_path: str
-        
-    @dataclass
-    class SemanticLidarTargetPair(SensorTargetPair):
-        label_path: str
     
     def __init__(self, root_path: str, max_workers: int = 3):
         # PRIVATE
@@ -58,14 +54,6 @@ class DatasetDumper(ABC):
     @property
     def bind_sensors(self) -> Set[Sensor]:
         return set(bind.sensor for bind in self.binds)
-
-    def bind_camera(self, sensor: Sensor, data_path: str) -> 'DatasetDumper':
-        self._binds.append(DatasetDumper.SensorTargetPair(sensor, data_path))
-        return self
-
-    def bind_semantic_lidar(self, sensor: Sensor, data_path: str, label_path: str) -> 'DatasetDumper':
-        self._binds.append(DatasetDumper.SemanticLidarTargetPair(sensor, data_path, label_path))
-        return self
 
     @abstractmethod
     def create_sequence(self, name: str = None):

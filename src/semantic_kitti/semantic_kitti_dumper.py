@@ -1,7 +1,7 @@
 import os
 import cv2
 import numpy as np
-from concurrent.futures import as_completed
+from dataclasses import dataclass
 
 from packages.carla1s.actors import RgbCamera, DepthCamera, SemanticLidar
 from packages.carla1s.tf import Point, CoordConverter
@@ -9,6 +9,18 @@ from packages.carla1s.tf import Point, CoordConverter
 from ..dataset_dumper import DatasetDumper
 
 class SemanticKittiDumper(DatasetDumper):
+    
+    @dataclass
+    class SemanticLidarTargetPair(DatasetDumper.SensorTargetPair):
+        label_path: str
+        
+    @dataclass
+    class TimestampTargetPair(DatasetDumper.SensorTargetPair):
+        pass
+    
+    @dataclass
+    class ImageTargetPair(DatasetDumper.SensorTargetPair):
+        pass
     
     @property
     def current_frame_name(self) -> str:
@@ -28,6 +40,14 @@ class SemanticKittiDumper(DatasetDumper):
             else:
                 self._promises.append(self.thread_pool.submit(self._dump_image, bind))
 
+        return self
+    
+    def bind_camera(self, sensor: Sensor, data_path: str) -> 'DatasetDumper':
+        self._binds.append(self.ImageTargetPair(sensor, data_path))
+        return self
+
+    def bind_semantic_lidar(self, sensor: Sensor, data_path: str, label_path: str) -> 'DatasetDumper':
+        self._binds.append(self.SemanticLidarTargetPair(sensor, data_path, label_path))
         return self
 
     def _setup_content_folder(self):
