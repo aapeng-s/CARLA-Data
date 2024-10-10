@@ -1,8 +1,10 @@
 import os
 import cv2
+import numpy as np
 from concurrent.futures import as_completed
 
 from packages.carla1s.actors import RgbCamera, DepthCamera, SemanticLidar
+from packages.carla1s.tf import Point, CoordConverter
 
 from ..dataset_dumper import DatasetDumper
 
@@ -55,6 +57,27 @@ class SemanticKittiDumper(DatasetDumper):
     def _dump_semantic_lidar(self, bind: DatasetDumper.SemanticLidarTargetPair):
         # 阻塞等待传感器更新
         bind.sensor.on_data_ready.wait()
+        
+        # 准备储存路径
+        file_name = f"{self.current_frame_name}"
+        path_data = os.path.join(self.current_sequence_path, bind.data_path, file_name + '.bin')
+        path_label = os.path.join(self.current_sequence_path, bind.label_path, file_name + '.label')
+        
+        # 处理点云
+        points = [Point(x=x, y=y, z=z) for x, y, z in bind.sensor.data.content[:, :3]]
+        points = CoordConverter.from_system(*points).apply_transform(CoordConverter.TF_TO_KITTI).get_list()
+        points = np.array([[p.x, p.y, p.z, 1.0] for p in points], dtype=np.float32)
+                
+        # 处理标注
+        seg = bind.sensor.data.content[:, 3]
+        id = bind.sensor.data.content[:, 4]
+        labels = np.column_stack((seg.astype(np.uint16), id.astype(np.uint16)))
+        
+        # 储存数据
+        points.tofile(path_data)
+        labels.tofile(path_label)
+        
         # 打印日志
-        self.logger.debug(f"[frame={bind.sensor.data.frame}] Dumped pointcloud to {bind.data_path}")
+        self.logger.debug(f"[frame={bind.sensor.data.frame}] Dumped pointcloud to {path_data}")
+        self.logger.debug(f"[frame={bind.sensor.data.frame}] Dumped labels to {path_label}")
 
