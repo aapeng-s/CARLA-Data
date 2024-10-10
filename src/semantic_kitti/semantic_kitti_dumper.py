@@ -185,6 +185,6 @@ class SemanticKittiDumper(DatasetDumper):
         pose_matrix = ' '.join(pose_matrix)
 
         # 保存到文件
-        with open(path, 'w') as f:
+        with open(path, 'a') as f:
             f.write(f"{pose_matrix}\n")
         self.logger.debug(f"[frame={bind.sensor.data.frame}] Dumped pose to {path}")
