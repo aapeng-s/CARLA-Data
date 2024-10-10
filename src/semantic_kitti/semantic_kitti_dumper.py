@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing import Optional
 
 from packages.carla1s.actors import Sensor
-from packages.carla1s.tf import Point, CoordConverter
+from packages.carla1s.tf import Point, CoordConverter, Transform
 
 from ..dataset_dumper import DatasetDumper
 
@@ -20,12 +20,17 @@ class SemanticKittiDumper(DatasetDumper):
         pass
     
     @dataclass
+    class PoseTargetPair(DatasetDumper.SensorTargetPair):
+        pass
+    
+    @dataclass
     class ImageTargetPair(DatasetDumper.SensorTargetPair):
         pass
     
     def __init__(self, root_path: str, max_workers: int = 3):
         super().__init__(root_path, max_workers)
         self._timestamp_offset: Optional[float] = None
+        self._pose_offset: Optional[Transform] = None
     
     @property
     def current_frame_name(self) -> str:
@@ -43,7 +48,7 @@ class SemanticKittiDumper(DatasetDumper):
         # 处理第一帧的特殊情况, 标记 offset 为 None
         if self._current_frame_count == 1:
             self._timestamp_offset = None
-        
+            self._pose_offset = None
         for bind in self.binds:
             if isinstance(bind, self.SemanticLidarTargetPair):
                 self._promises.append(self.thread_pool.submit(self._dump_semantic_lidar, bind))
@@ -51,6 +56,8 @@ class SemanticKittiDumper(DatasetDumper):
                 self._promises.append(self.thread_pool.submit(self._dump_image, bind))
             elif isinstance(bind, self.TimestampTargetPair):
                 self._promises.append(self.thread_pool.submit(self._dump_timestamp, bind))
+            elif isinstance(bind, self.PoseTargetPair):
+                self._promises.append(self.thread_pool.submit(self._dump_pose, bind))
 
         return self
     
@@ -66,6 +73,11 @@ class SemanticKittiDumper(DatasetDumper):
         if os.path.splitext(path)[1] == '':
             raise ValueError(f"Path {path} is a folder, not a file.")
         self.binds.append(self.TimestampTargetPair(sensor, path))
+        
+    def bind_pose(self, sensor: Sensor, path: str):
+        if os.path.splitext(path)[1] == '':
+            raise ValueError(f"Path {path} is a folder, not a file.")
+        self.binds.append(self.PoseTargetPair(sensor, path))
 
     def _setup_content_folder(self):
         """创建内容文件夹."""
@@ -138,3 +150,41 @@ class SemanticKittiDumper(DatasetDumper):
             f.write(f"{timestamp:.6e}\n")
             
         self.logger.debug(f"[frame={bind.sensor.data.frame}] Dumped timestamp to {os.path.join(self.current_sequence_path, bind.data_path)}, value: {timestamp:.6e}")
+
+    def _dump_pose(self, bind: PoseTargetPair):
+        """导出位姿数据, 是 3x4 的变换矩阵, 表示当前帧参考传感器到初始帧参考传感器的位姿变换.
+
+        Args:
+            bind (PoseTargetPair): 参考的传感器绑定
+        """
+        bind.sensor.on_data_ready.wait()
+        
+        # 准备储存路径
+        path = os.path.join(self.current_sequence_path, bind.data_path)
+        
+        # 获取位姿数据并转换为
+        pose = bind.sensor.data.transform
+        
+        # 如果 offset 未设置, 则设置为当前帧的位姿
+        if self._pose_offset is None:
+            self._pose_offset = pose
+        
+        # 计算当前帧的位姿相对初始帧的位姿
+        relative_pose = (CoordConverter
+                         .from_system(pose)
+                         .apply_transform(self._pose_offset)
+                         .apply_transform(CoordConverter.TF_TO_KITTI)
+                         .get_single())
+        
+        # 将位姿矩阵转换为 3x4 的变换矩阵
+        pose_matrix = relative_pose.matrix[:3, :]
+        
+        # 横向展开, 表示为 1x12 的行向量, 并处理为小数点后 6 位的科学计数法表示, 以空格分隔
+        pose_matrix = pose_matrix.flatten()
+        pose_matrix = [f"{value:.6e}" for value in pose_matrix]
+        pose_matrix = ' '.join(pose_matrix)
+
+        # 保存到文件
+        with open(path, 'w') as f:
+            f.write(f"{pose_matrix}\n")
+        self.logger.debug(f"[frame={bind.sensor.data.frame}] Dumped pose to {path}")
