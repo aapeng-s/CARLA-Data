@@ -100,7 +100,7 @@ class DatasetDumper(ABC):
             try:
                 promise.result()
             except Exception as e:
-                self.logger.error(f"Error in promise: {e}")
+                self.logger.error(f"Error in promise: {e}", exc_info=True)
                 count_error += 1
             else:
                 count_success += 1
