@@ -2,6 +2,7 @@ import os
 import cv2
 import numpy as np
 from dataclasses import dataclass
+from typing import Optional
 
 from packages.carla1s.actors import Sensor
 from packages.carla1s.tf import Point, CoordConverter
@@ -22,6 +23,10 @@ class SemanticKittiDumper(DatasetDumper):
     class ImageTargetPair(DatasetDumper.SensorTargetPair):
         pass
     
+    def __init__(self, root_path: str, max_workers: int = 3):
+        super().__init__(root_path, max_workers)
+        self._timestamp_offset: Optional[float] = None
+    
     @property
     def current_frame_name(self) -> str:
         return f'{self._current_frame_count:06d}'
@@ -34,6 +39,11 @@ class SemanticKittiDumper(DatasetDumper):
         # 遍历所有的 bind, 创建 dump 任务
         self._current_frame_count += 1
         self._promises = []
+        
+        # 处理第一帧的特殊情况, 标记 offset 为 None
+        if self._current_frame_count == 1:
+            self._timestamp_offset = None
+        
         for bind in self.binds:
             if isinstance(bind, self.SemanticLidarTargetPair):
                 self._promises.append(self.thread_pool.submit(self._dump_semantic_lidar, bind))
@@ -121,7 +131,9 @@ class SemanticKittiDumper(DatasetDumper):
             bind (DatasetDumper.SensorTargetPair): 参考的传感器绑定
         """
         bind.sensor.on_data_ready.wait()
-        timestamp = bind.sensor.data.timestamp
+        if self._timestamp_offset is None:
+            self._timestamp_offset = bind.sensor.data.timestamp
+        timestamp = bind.sensor.data.timestamp - self._timestamp_offset
         with open(os.path.join(self.current_sequence_path, bind.data_path), 'a') as f:
             f.write(f"{timestamp:.6e}\n")
             
