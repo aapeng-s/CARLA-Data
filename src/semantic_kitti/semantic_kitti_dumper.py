@@ -56,7 +56,7 @@ class SemanticKittiDumper(DatasetDumper):
             os.makedirs(os.path.join(self.current_sequence_path, bind.data_path))
             self.logger.info(f"Created data path: {os.path.join(self.current_sequence_path, bind.data_path)}")
             # 处理特殊项
-            if isinstance(bind, DatasetDumper.SemanticLidarTargetPair):
+            if isinstance(bind, self.SemanticLidarTargetPair):
                 os.makedirs(os.path.join(self.current_sequence_path, bind.label_path))
                 self.logger.info(f"Created label path: {os.path.join(self.current_sequence_path, bind.label_path)}")
 
