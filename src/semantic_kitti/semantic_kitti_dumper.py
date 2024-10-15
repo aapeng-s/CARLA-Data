@@ -137,7 +137,7 @@ class SemanticKittiDumper(DatasetDumper):
         path_labels = os.path.join(self.current_sequence_path, bind.labels_path, file_name + '.label')
         
         # 处理点云
-        points = [Point(x=x, y=y, z=z) for x, y, z in bind.sensor.data.content[:, :3]]
+        points = [Point(x=x, y=-y, z=z) for x, y, z in bind.sensor.data.content[:, :3]]
         points = CoordConverter.from_system(*points).get_list()
         points = np.array([[p.x, p.y, p.z, 1.0] for p in points], dtype=np.float32)
                 
