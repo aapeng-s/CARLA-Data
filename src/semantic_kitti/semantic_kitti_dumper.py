@@ -298,6 +298,6 @@ class SemanticKittiDumper(DatasetDumper):
         T = np.dot(np.linalg.inv(cam_0.data.transform.matrix), target.data.transform.matrix)
         with open(path, 'a') as calibfile:
             calibfile.write("Tr:")
-            string = ' '.join(['{:.12e}'.format(value) for row in T for value in row])
+            string = ' '.join(['{:.12e}'.format(value) for row in T[:3, :] for value in row])
             calibfile.write(string + "\n")
             self.logger.debug(f"[frame={bind_calib.sensor.data.frame}] Dumped calib Tr to {path}")
