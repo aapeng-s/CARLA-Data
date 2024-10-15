@@ -1,6 +1,7 @@
 import logging
+import time
 
-from packages.carla1s import CarlaContext, ManualExecutor
+from packages.carla1s import CarlaContext, ManualExecutor, PassiveExecutor
 from packages.carla1s.actors import Vehicle, RgbCamera, DepthCamera, SemanticLidar
 from packages.carla1s.tf import Transform
 
@@ -8,8 +9,10 @@ from src.semantic_kitti import SemanticKittiDumper
 
 
 def main(*, fps: int = 20):   
-
-    with CarlaContext(host='10.0.0.110', log_level=logging.DEBUG) as cc, ManualExecutor(cc, fixed_delta_seconds=1/fps) as exe:        
+    with CarlaContext(log_level=logging.DEBUG, timeout_sec=10) as cc, PassiveExecutor(cc) as exe:
+        cc.reload_world('Town01')
+        time.sleep(3)
+    with CarlaContext(log_level=logging.DEBUG) as cc, ManualExecutor(cc, fixed_delta_seconds=1/fps) as exe:
         ego_vehicle: Vehicle = (cc.actor_factory
             .create(Vehicle, from_blueprint='vehicle.tesla.model3')
             .with_name("ego_vehicle")
