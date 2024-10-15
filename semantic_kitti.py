@@ -61,14 +61,14 @@ def main(*, fps: int = 20):
         exe.wait_ticks(1)
         
         # SETUP DUMPER
-        dumper = SemanticKittiDumper('/home/garry/Workspace/Temp/semantic_kitti')
-        dumper.bind_camera(cam_0_rgb, "image_0")
-        dumper.bind_camera(cam_1_rgb, "image_1")
-        dumper.bind_camera(cam_0_depth, "image_2")
-        dumper.bind_camera(cam_1_depth, "image_3")
-        dumper.bind_semantic_lidar(semantic_lidar, "velodyne", "label")
+        dumper = SemanticKittiDumper('/home/isleep/Documents/temp_kitti')
+        dumper.bind_camera(cam_0_depth, "image_0")
+        dumper.bind_camera(cam_1_depth, "image_1")
+        dumper.bind_camera(cam_0_rgb, "image_2")
+        dumper.bind_camera(cam_1_rgb, "image_3")
+        dumper.bind_semantic_lidar(semantic_lidar, "velodyne", "labels")
         dumper.bind_timestamp(cam_0_rgb, "times.txt")
-        dumper.bind_pose(cam_0_rgb, "pose.txt")
+        dumper.bind_pose(cam_0_rgb, "poses.txt")
         dumper.bind_calib(semantic_lidar, "calib.txt")
 
         dumper.create_sequence()
