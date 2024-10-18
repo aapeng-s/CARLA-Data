@@ -68,6 +68,7 @@ def main(*, fps: int = 20):
         
         ego_vehicle.set_autopilot(True)
         exe.wait_ticks(1)
+        exe.wait_sim_seconds(1)
         
         # SETUP DUMPER
         dumper = SemanticKittiDumper('/home/isleep/Documents/temp_kitti')
