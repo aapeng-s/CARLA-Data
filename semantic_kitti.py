@@ -21,7 +21,7 @@ def main(*, fps: int = 20):
         
         cam_0_tf = Transform(x=0.30, y=0.00, z=1.70)
         cam_1_tf = Transform(x=0.30, y=0.50, z=1.70)
-        semantic_lidar_tf = Transform(x=0.00, y=0.00, z=1.80)
+        semantic_lidar_tf = Transform(x=0.00, y=0.00, z=2.80)
 
         cam_0_rgb: RgbCamera = (cc.actor_factory
             .create(RgbCamera)
@@ -54,7 +54,13 @@ def main(*, fps: int = 20):
             .with_name("semantic_lidar")
             .with_transform(semantic_lidar_tf)
             .with_parent(ego_vehicle)
-            .with_attributes(rotation_frequency=fps)
+            .with_attributes(rotation_frequency=fps,
+                             points_per_second=1000000,
+                             channels=64,
+                             range=100,
+                             upper_fov=2,
+                             lower_fov=-24.8,
+                             )
             .build())
             
         cc.all_actors_spawn().all_sensors_listen()
