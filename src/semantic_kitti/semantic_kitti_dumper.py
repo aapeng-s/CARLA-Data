@@ -1,11 +1,12 @@
 import os
 import cv2
 import numpy as np
+import copy
 from dataclasses import dataclass
 from typing import Optional
 
 from packages.carla1s.actors import Sensor
-from packages.carla1s.tf import Point, CoordConverter, Transform
+from packages.carla1s.tf import Point, CoordConverter, Transform, Coordinate
 
 from ..dataset_dumper import DatasetDumper
 
@@ -35,6 +36,7 @@ class SemanticKittiDumper(DatasetDumper):
         super().__init__(root_path, max_workers)
         self._timestamp_offset: Optional[float] = None
         self._pose_offset: Optional[Transform] = None
+        self._pose_offset_coordinate: Optional[Coordinate] = None
     
     @property
     def current_frame_name(self) -> str:
@@ -217,18 +219,25 @@ class SemanticKittiDumper(DatasetDumper):
         
         # 如果 offset 未设置, 则设置为当前帧的位姿
         if self._pose_offset is None:
-            self._pose_offset = pose
-        
-        # 计算当前帧的位姿相对初始帧的位姿
-        relative_pose = (CoordConverter
-                         .from_system(pose)
-                         .apply_transform(self._pose_offset)
-                         .apply_transform(CoordConverter.TF_TO_KITTI)
-                         .get_single())
+            self._pose_offset = copy.deepcopy(pose)
+            self._pose_offset_coordinate = Coordinate(self._pose_offset).change_orientation(CoordConverter.CARLA_CAM_TO_KITTI_CAM_ORIENTATION)
+
+        # # 计算当前帧的位姿相对初始帧的位姿
+        # relative_pose = (CoordConverter
+        #                  .from_system(pose)
+        #                  .apply_transform(self._pose_offset)
+        #                  .change_orientation(CoordConverter.CARLA_CAM_TO_KITTI_CAM)
+        #                  .apply_transform(CoordConverter.CARLA_CAM_TO_KITTI_CAM)
+        #                  .get_single())
+
+        cami_on_cam0_kittiori_kitticoord = (Coordinate(pose)
+                                            .change_orientation(CoordConverter.CARLA_CAM_TO_KITTI_CAM_ORIENTATION)
+                                            .apply_transform(Transform(matrix=self._pose_offset_coordinate.data.matrix)))
         
         # 将位姿矩阵转换为 3x4 的变换矩阵
-        pose_matrix = relative_pose.matrix[:3, :]
-        
+        # pose_matrix = relative_pose.matrix[:3, :]
+        pose_matrix = cami_on_cam0_kittiori_kitticoord.data.matrix[:3, :]
+
         # 横向展开, 表示为 1x12 的行向量, 并处理为小数点后 6 位的科学计数法表示, 以空格分隔
         pose_matrix = pose_matrix.flatten()
         pose_matrix = [f"{value:.6e}" for value in pose_matrix]
@@ -271,6 +280,8 @@ class SemanticKittiDumper(DatasetDumper):
             return P
 
         # 处理相机
+        cam0_on_cam0_kittiori_carlacoord = (Coordinate(cam_0.data.transform)
+                                            .change_orientation(CoordConverter.CARLA_CAM_TO_KITTI_CAM_ORIENTATION))
         for idx, cam in enumerate(cams):
             # 获取内参
             image_width = int(cam.attributes['image_size_x'])
@@ -282,9 +293,18 @@ class SemanticKittiDumper(DatasetDumper):
             K = compute_intrinsic_matrix(image_width, image_height, fov)
             
             # 获取外参
-            T = np.dot(np.linalg.inv(cam_0.data.transform.matrix), cam.data.transform.matrix)
-            R = T[:3, :3]
-            t = T[:3, -1].reshape(3, 1)
+            cam_on_cam0_kittiori_kitticoord = (Coordinate(cam.data.transform)
+                                               .change_orientation(CoordConverter.CARLA_CAM_TO_KITTI_CAM_ORIENTATION)
+                                               .apply_transform(Transform(matrix=cam0_on_cam0_kittiori_carlacoord.data.matrix)))
+            # T = (CoordConverter
+            #      .from_system(cam.data.transform)
+            #      .apply_transform(cam_0.data.transform)
+            #      .change_orientation(CoordConverter.CARLA_CAM_TO_KITTI_CAM)
+            #      .apply_transform(CoordConverter.CARLA_CAM_TO_KITTI_CAM)
+            #      .get_single())
+            # T = np.dot(np.linalg.inv(cam_0.data.transform.matrix), cam.data.transform.matrix)
+            R = cam_on_cam0_kittiori_kitticoord.data.matrix[:3, :3]
+            t = cam_on_cam0_kittiori_kitticoord.data.matrix[:3, -1].reshape(3, 1)
             P = compute_projection_matrix(K, R, t)
             
             # 保存到文件
@@ -294,10 +314,21 @@ class SemanticKittiDumper(DatasetDumper):
                 calibfile.write(string + "\n")
                 self.logger.debug(f"[frame={cam.data.frame}] Dumped calib P{idx} to {path}")
         
-        # 处理最终目标
-        T = np.dot(np.linalg.inv(cam_0.data.transform.matrix), target.data.transform.matrix)
+        # 处理雷达到相机的变换
+        lidar_on_cam0_kittiori_kitticoord = (Coordinate(target.data.transform)
+                                             .change_orientation(CoordConverter.LEFT_HANDED_TO_RIGHT_HANDED_ORIENTATION)
+                                             .apply_transform(Transform(matrix=cam0_on_cam0_kittiori_carlacoord.data.matrix)))
+        Tr = lidar_on_cam0_kittiori_kitticoord.data.matrix
+
+        # T = (CoordConverter
+        #      .from_system(target.data.transform)
+        #      .apply_transform(cam_0.data.transform)
+        #      .change_orientation(CoordConverter.CARLA_CAM_TO_KITTI_CAM)
+        #      .apply_transform(CoordConverter.CARLA_CAM_TO_KITTI_CAM)
+        #      .get_single())
+        # T = np.dot(np.linalg.inv(cam_0.data.transform.matrix), target.data.transform.matrix)
         with open(path, 'a') as calibfile:
             calibfile.write("Tr:")
-            string = ' '.join(['{:.12e}'.format(value) for row in T for value in row])
+            string = ' '.join(['{:.12e}'.format(value) for row in Tr[:3, :] for value in row])
             calibfile.write(string + "\n")
             self.logger.debug(f"[frame={bind_calib.sensor.data.frame}] Dumped calib Tr to {path}")
