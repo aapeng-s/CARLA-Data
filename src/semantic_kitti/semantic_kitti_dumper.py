@@ -13,7 +13,7 @@ class SemanticKittiDumper(DatasetDumper):
     
     @dataclass
     class SemanticLidarTargetPair(DatasetDumper.SensorTargetPair):
-        label_path: str
+        labels_path: str
         
     @dataclass
     class TimestampTargetPair(DatasetDumper.SensorTargetPair):
@@ -71,8 +71,8 @@ class SemanticKittiDumper(DatasetDumper):
         self._binds.append(self.ImageTargetPair(sensor, data_path))
         return self
 
-    def bind_semantic_lidar(self, sensor: Sensor, data_path: str, label_path: str) -> 'DatasetDumper':
-        self._binds.append(self.SemanticLidarTargetPair(sensor, data_path, label_path))
+    def bind_semantic_lidar(self, sensor: Sensor, data_path: str, labels_path: str) -> 'DatasetDumper':
+        self._binds.append(self.SemanticLidarTargetPair(sensor, data_path, labels_path))
         return self
 
     def bind_timestamp(self, sensor: Sensor, path: str):
@@ -103,8 +103,8 @@ class SemanticKittiDumper(DatasetDumper):
                     self.logger.info(f"Created file at: {os.path.join(self.current_sequence_path, bind.data_path)}")
             # 处理特殊项
             if isinstance(bind, self.SemanticLidarTargetPair):
-                os.makedirs(os.path.join(self.current_sequence_path, bind.label_path))
-                self.logger.info(f"Created label path: {os.path.join(self.current_sequence_path, bind.label_path)}")
+                os.makedirs(os.path.join(self.current_sequence_path, bind.labels_path))
+                self.logger.info(f"Created labels path: {os.path.join(self.current_sequence_path, bind.labels_path)}")
 
     def _setup_calib_file(self):
         """创建标定文件."""
@@ -134,7 +134,7 @@ class SemanticKittiDumper(DatasetDumper):
         # 准备储存路径
         file_name = f"{self.current_frame_name}"
         path_data = os.path.join(self.current_sequence_path, bind.data_path, file_name + '.bin')
-        path_label = os.path.join(self.current_sequence_path, bind.label_path, file_name + '.label')
+        path_labels = os.path.join(self.current_sequence_path, bind.labels_path, file_name + '.label')
         
         # 处理点云
         points = [Point(x=x, y=y, z=z) for x, y, z in bind.sensor.data.content[:, :3]]
@@ -148,11 +148,11 @@ class SemanticKittiDumper(DatasetDumper):
         
         # 储存数据
         points.tofile(path_data)
-        labels.tofile(path_label)
+        labels.tofile(path_labels)
         
         # 打印日志
-        self.logger.debug(f"[frame={bind.sensor.data.frame}] Dumped pointcloud to {path_data}")
-        self.logger.debug(f"[frame={bind.sensor.data.frame}] Dumped labels to {path_label}")
+        self.logger.debug(f"[frame={bind.sensor.data.frame}] Dumped pointcloud(shape={points.shape}) to {path_data}")
+        self.logger.debug(f"[frame={bind.sensor.data.frame}] Dumped labels(shape={labels.shape}) to {path_labels}")
 
     def _dump_timestamp(self, bind: DatasetDumper.SensorTargetPair):
         """导出时间戳, 以秒为单位, 使用科学计数法, 保留小数点后 6 位.
