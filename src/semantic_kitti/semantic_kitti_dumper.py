@@ -14,23 +14,28 @@ class SemanticKittiDumper(DatasetDumper):
     
     @dataclass
     class SemanticLidarBind(DatasetDumper.SensorBind):
+        """绑定语义激光雷达至输出点云和标签文件夹路径"""
         data_path: str
         labels_path: str
         
     @dataclass
     class TimestampBind(DatasetDumper.SensorBind):
+        """绑定时间戳至文件路径"""
         data_path: str
     
     @dataclass
     class PoseBind(DatasetDumper.SensorBind):
+        """绑定位姿至文件路径"""
         data_path: str
     
     @dataclass
     class ImageBind(DatasetDumper.SensorBind):
+        """绑定图像至输出文件夹路径"""
         data_path: str
     
     @dataclass
     class CalibTrBind(DatasetDumper.SensorBind):
+        """绑定标定数据至文件路径"""
         data_path: str
     
     def __init__(self, root_path: str, max_workers: int = 3):
