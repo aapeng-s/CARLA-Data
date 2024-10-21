@@ -91,9 +91,9 @@ def main(*,
         # EXEC DUMP
         with dumper.create_sequence():
             for i in range(3):
+                dumper.logger.info(f'-> FRAME: {dumper.current_frame_name} '.ljust(80, '-'))
                 exe.wait_ticks(1)
                 dumper.create_frame().join()
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

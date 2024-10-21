@@ -57,7 +57,9 @@ class SemanticKittiDumper(DatasetDumper):
     def create_sequence(self, name: str = None):
         super().create_sequence(name)
         self._setup_content_folder()
+        self.logger.info("=> SEQUENCE BEGINS ".ljust(80, '='))
         yield
+        self.logger.info("=> SEQUENCE ENDS ".ljust(80, '='))
 
     def create_frame(self) -> 'SemanticKittiDumper':
         # 遍历所有的 bind, 创建 dump 任务
