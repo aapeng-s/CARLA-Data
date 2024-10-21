@@ -90,4 +90,7 @@ def main(*, fps: int = 20):
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception:
+        print(f'Exception occurred, check the log for more details.')
