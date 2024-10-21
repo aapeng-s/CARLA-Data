@@ -38,7 +38,10 @@ class SemanticKittiDumper(DatasetDumper):
         """绑定标定数据至文件路径"""
         data_path: str
     
-    def __init__(self, root_path: str, max_workers: int = 3):
+    def __init__(self, 
+                 root_path: str, 
+                 *,
+                 max_workers: int = 3):
         super().__init__(root_path, max_workers)
         self._timestamp_offset: Optional[float] = None
         self._pose_offset: Optional[Transform] = None
