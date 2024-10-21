@@ -116,7 +116,7 @@ class SemanticKittiDumper(DatasetDumper):
                    file_path: str) -> 'DatasetDumper':
         if os.path.splitext(file_path)[1] == '':
             raise ValueError(f"Path {file_path} is a folder, not a file.")
-        self.binds.append(self.CalibTrBind(sensor, path))
+        self.binds.append(self.CalibTrBind(sensor, file_path))
 
     def _setup_content_folder(self):
         """创建内容文件夹."""
