@@ -56,6 +56,7 @@ class DatasetDumper(ABC):
         return set(bind.sensor for bind in self.binds)
 
     @abstractmethod
+    @contextmanager
     def create_sequence(self, name: str = None):
         """创建一个新的序列.
 

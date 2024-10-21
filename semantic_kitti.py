@@ -81,12 +81,11 @@ def main(*, fps: int = 20):
         dumper.bind_pose(cam_0_rgb, file_path="poses.txt")
         dumper.bind_calib(tr_sensor=semantic_lidar, file_path="calib.txt")
 
-        dumper.create_sequence()
-        
-        
-        for i in range(3):
-            exe.wait_ticks(1)
-            dumper.create_frame().join()
+        # EXEC DUMP
+        with dumper.create_sequence():
+            for i in range(3):
+                exe.wait_ticks(1)
+                dumper.create_frame().join()
 
 
 if __name__ == "__main__":

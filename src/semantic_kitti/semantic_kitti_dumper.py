@@ -52,9 +52,11 @@ class SemanticKittiDumper(DatasetDumper):
         """当前帧的名称, 格式为 6 位数字, 不足 6 位则补 0"""
         return f'{self._current_frame_count:06d}'
 
+    @contextmanager
     def create_sequence(self, name: str = None):
         super().create_sequence(name)
         self._setup_content_folder()
+        yield
 
     def create_frame(self) -> 'SemanticKittiDumper':
         # 遍历所有的 bind, 创建 dump 任务
