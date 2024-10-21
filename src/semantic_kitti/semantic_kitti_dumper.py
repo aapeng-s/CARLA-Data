@@ -49,6 +49,7 @@ class SemanticKittiDumper(DatasetDumper):
     
     @property
     def current_frame_name(self) -> str:
+        """当前帧的名称, 格式为 6 位数字, 不足 6 位则补 0"""
         return f'{self._current_frame_count:06d}'
 
     def create_sequence(self, name: str = None):
