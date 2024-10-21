@@ -71,7 +71,7 @@ def main(*, fps: int = 20):
         exe.wait_sim_seconds(1)
         
         # SETUP DUMPER
-        dumper = SemanticKittiDumper('/home/isleep/Documents/temp_kitti')
+        dumper = SemanticKittiDumper('./temp/')
         dumper.bind_camera(cam_0_depth, data_folder="image_0")
         dumper.bind_camera(cam_1_depth, data_folder="image_1")
         dumper.bind_camera(cam_0_rgb, data_folder="image_2")
