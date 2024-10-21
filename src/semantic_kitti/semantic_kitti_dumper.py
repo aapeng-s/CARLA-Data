@@ -83,7 +83,7 @@ class SemanticKittiDumper(DatasetDumper):
                     sensor: Sensor, 
                     *,
                     data_folder: str) -> 'DatasetDumper':
-        self._binds.append(self.ImageBind(sensor, data_path))
+        self._binds.append(self.ImageBind(sensor, data_folder))
         return self
 
     def bind_semantic_lidar(self, 
@@ -91,7 +91,7 @@ class SemanticKittiDumper(DatasetDumper):
                             *,
                             data_folder: str, 
                             labels_folder: str) -> 'DatasetDumper':
-        self._binds.append(self.SemanticLidarBind(sensor, data_path, labels_path))
+        self._binds.append(self.SemanticLidarBind(sensor, data_folder, labels_folder))
         return self
 
     def bind_timestamp(self, 
@@ -99,7 +99,7 @@ class SemanticKittiDumper(DatasetDumper):
                        *,
                        file_path: str) -> 'DatasetDumper':
         if os.path.splitext(file_path)[1] == '':
-            raise ValueError(f"Path {path} is a folder, not a file.")
+            raise ValueError(f"Path {file_path} is a folder, not a file.")
         self.binds.append(self.TimestampBind(sensor, file_path))
         
     def bind_pose(self, 
@@ -108,7 +108,7 @@ class SemanticKittiDumper(DatasetDumper):
                   file_path: str) -> 'DatasetDumper':
         if os.path.splitext(file_path)[1] == '':
             raise ValueError(f"Path {file_path} is a folder, not a file.")
-        self.binds.append(self.PoseBind(sensor, path))
+        self.binds.append(self.PoseBind(sensor, file_path))
         
     def bind_calib(self, 
                    *, 
@@ -116,7 +116,7 @@ class SemanticKittiDumper(DatasetDumper):
                    file_path: str) -> 'DatasetDumper':
         if os.path.splitext(file_path)[1] == '':
             raise ValueError(f"Path {file_path} is a folder, not a file.")
-        self.binds.append(self.CalibTrBind(sensor, file_path))
+        self.binds.append(self.CalibTrBind(tr_sensor, file_path))
 
     def _setup_content_folder(self):
         """创建内容文件夹."""
