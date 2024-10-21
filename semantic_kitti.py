@@ -9,9 +9,9 @@ from src.semantic_kitti import SemanticKittiDumper
 
 
 def main(*, fps: int = 20):   
-    with CarlaContext(log_level=logging.DEBUG, timeout_sec=50) as cc, PassiveExecutor(cc) as exe:
-        cc.reload_world('SUSTech_COE_ParkingLot')
-        time.sleep(3)
+    # with CarlaContext(log_level=logging.DEBUG, timeout_sec=50) as cc, PassiveExecutor(cc) as exe:
+    #     cc.reload_world('SUSTech_COE_ParkingLot')
+    #     time.sleep(3)
     with CarlaContext(log_level=logging.DEBUG) as cc, ManualExecutor(cc, fixed_delta_seconds=1/fps) as exe:
         ego_vehicle: Vehicle = (cc.actor_factory
             .create(Vehicle, from_blueprint='vehicle.tesla.model3')
