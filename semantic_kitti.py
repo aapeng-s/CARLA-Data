@@ -1,5 +1,6 @@
 import logging
 import time
+import argparse
 
 from packages.carla1s import CarlaContext, ManualExecutor, PassiveExecutor
 from packages.carla1s.actors import Vehicle, RgbCamera, DepthCamera, SemanticLidar
@@ -8,11 +9,17 @@ from packages.carla1s.tf import Transform
 from src.semantic_kitti import SemanticKittiDumper
 
 
-def main(*, fps: int = 20):   
-    with CarlaContext(log_level=logging.DEBUG, timeout_sec=50) as cc, PassiveExecutor(cc) as exe:
-        cc.reload_world('SUSTech_COE_ParkingLot')
-        time.sleep(3)
-    with CarlaContext(log_level=logging.DEBUG) as cc, ManualExecutor(cc, fixed_delta_seconds=1/fps) as exe:
+def main(*, 
+         fps: int = 20, 
+         map: str = 'Town01', 
+         output: str = './temp/', 
+         host: str = 'localhost', 
+         port: int = 2000,
+         log_level: int = logging.DEBUG):
+
+    with CarlaContext(host=host, port=port, log_level=log_level) as cc, ManualExecutor(cc, fixed_delta_seconds=1/fps) as exe:
+        cc.reload_world(map_name=map)
+        
         ego_vehicle: Vehicle = (cc.actor_factory
             .create(Vehicle, from_blueprint='vehicle.tesla.model3')
             .with_name("ego_vehicle")
@@ -71,23 +78,36 @@ def main(*, fps: int = 20):
         exe.wait_sim_seconds(1)
         
         # SETUP DUMPER
-        dumper = SemanticKittiDumper('/home/isleep/Documents/temp_kitti')
-        dumper.bind_camera(cam_0_depth, "image_0")
-        dumper.bind_camera(cam_1_depth, "image_1")
-        dumper.bind_camera(cam_0_rgb, "image_2")
-        dumper.bind_camera(cam_1_rgb, "image_3")
-        dumper.bind_semantic_lidar(semantic_lidar, "velodyne", "labels")
-        dumper.bind_timestamp(cam_0_rgb, "times.txt")
-        dumper.bind_pose(cam_0_rgb, "poses.txt")
-        dumper.bind_calib(semantic_lidar, "calib.txt")
+        dumper = SemanticKittiDumper(output)
+        dumper.bind_camera(cam_0_depth, data_folder="image_0")
+        dumper.bind_camera(cam_1_depth, data_folder="image_1")
+        dumper.bind_camera(cam_0_rgb, data_folder="image_2")
+        dumper.bind_camera(cam_1_rgb, data_folder="image_3")
+        dumper.bind_semantic_lidar(semantic_lidar, data_folder="velodyne", labels_folder="labels")
+        dumper.bind_timestamp(cam_0_rgb, file_path="times.txt")
+        dumper.bind_pose(cam_0_rgb, file_path="poses.txt")
+        dumper.bind_calib(tr_sensor=semantic_lidar, file_path="calib.txt")
 
-        dumper.create_sequence()
-        
-        
-        for i in range(3):
-            exe.wait_ticks(1)
-            dumper.create_frame().join()
-
+        # EXEC DUMP
+        with dumper.create_sequence():
+            for i in range(3):
+                dumper.logger.info(f'-> FRAME: {dumper.current_frame_name} '.ljust(80, '-'))
+                exe.wait_ticks(1)
+                dumper.create_frame().join()
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--fps', type=int, default=20, help='Recommended FPS of the simulation')
+    parser.add_argument('--map', type=str, default='Town01', help='Name of the map to load')
+    parser.add_argument('--output', type=str, default='./temp/', help='Path to save the dataset')
+    parser.add_argument('--host', type=str, default='localhost', help='Host of the Carla server')
+    parser.add_argument('--port', type=int, default=2000, help='Port of the Carla server')
+    parser.add_argument('--debug', action='store_true', help='Enable debug mode, setting log level to DEBUG')
+    args = parser.parse_args()
+    
+    log_level = logging.DEBUG if args.debug else logging.INFO
+    
+    try:
+        main(fps=args.fps, map=args.map, output=args.output, host=args.host, port=args.port, log_level=log_level)
+    except Exception:
+        print(f'Exception occurred, check the log for more details.')
