@@ -13,24 +13,25 @@ from ..dataset_dumper import DatasetDumper
 class SemanticKittiDumper(DatasetDumper):
     
     @dataclass
-    class SemanticLidarTargetPair(DatasetDumper.SensorTargetPair):
+    class SemanticLidarBind(DatasetDumper.SensorBind):
+        data_path: str
         labels_path: str
         
     @dataclass
-    class TimestampTargetPair(DatasetDumper.SensorTargetPair):
-        pass
+    class TimestampBind(DatasetDumper.SensorBind):
+        data_path: str
     
     @dataclass
-    class PoseTargetPair(DatasetDumper.SensorTargetPair):
-        pass
+    class PoseBind(DatasetDumper.SensorBind):
+        data_path: str
     
     @dataclass
-    class ImageTargetPair(DatasetDumper.SensorTargetPair):
-        pass
+    class ImageBind(DatasetDumper.SensorBind):
+        data_path: str
     
     @dataclass
-    class CalibTargetPair(DatasetDumper.SensorTargetPair):
-        pass
+    class CalibTrBind(DatasetDumper.SensorBind):
+        data_path: str
     
     def __init__(self, root_path: str, max_workers: int = 3):
         super().__init__(root_path, max_workers)
@@ -58,39 +59,39 @@ class SemanticKittiDumper(DatasetDumper):
             self._setup_calib_file()
 
         for bind in self.binds:
-            if isinstance(bind, self.SemanticLidarTargetPair):
+            if isinstance(bind, self.SemanticLidarBind):
                 self._promises.append(self.thread_pool.submit(self._dump_semantic_lidar, bind))
-            elif isinstance(bind, self.ImageTargetPair):
+            elif isinstance(bind, self.ImageBind):
                 self._promises.append(self.thread_pool.submit(self._dump_image, bind))
-            elif isinstance(bind, self.TimestampTargetPair):
+            elif isinstance(bind, self.TimestampBind):
                 self._promises.append(self.thread_pool.submit(self._dump_timestamp, bind))
-            elif isinstance(bind, self.PoseTargetPair):
+            elif isinstance(bind, self.PoseBind):
                 self._promises.append(self.thread_pool.submit(self._dump_pose, bind))
 
         return self
     
     def bind_camera(self, sensor: Sensor, data_path: str) -> 'DatasetDumper':
-        self._binds.append(self.ImageTargetPair(sensor, data_path))
+        self._binds.append(self.ImageBind(sensor, data_path))
         return self
 
     def bind_semantic_lidar(self, sensor: Sensor, data_path: str, labels_path: str) -> 'DatasetDumper':
-        self._binds.append(self.SemanticLidarTargetPair(sensor, data_path, labels_path))
+        self._binds.append(self.SemanticLidarBind(sensor, data_path, labels_path))
         return self
 
     def bind_timestamp(self, sensor: Sensor, path: str):
         if os.path.splitext(path)[1] == '':
             raise ValueError(f"Path {path} is a folder, not a file.")
-        self.binds.append(self.TimestampTargetPair(sensor, path))
+        self.binds.append(self.TimestampBind(sensor, path))
         
     def bind_pose(self, sensor: Sensor, path: str):
         if os.path.splitext(path)[1] == '':
             raise ValueError(f"Path {path} is a folder, not a file.")
-        self.binds.append(self.PoseTargetPair(sensor, path))
+        self.binds.append(self.PoseBind(sensor, path))
         
     def bind_calib(self, sensor: Sensor, path: str):
         if os.path.splitext(path)[1] == '':
             raise ValueError(f"Path {path} is a folder, not a file.")
-        self.binds.append(self.CalibTargetPair(sensor, path))
+        self.binds.append(self.CalibTrBind(sensor, path))
 
     def _setup_content_folder(self):
         """创建内容文件夹."""
@@ -104,22 +105,22 @@ class SemanticKittiDumper(DatasetDumper):
                     f.write('')
                     self.logger.info(f"Created file at: {os.path.join(self.current_sequence_path, bind.data_path)}")
             # 处理特殊项
-            if isinstance(bind, self.SemanticLidarTargetPair):
+            if isinstance(bind, self.SemanticLidarBind):
                 os.makedirs(os.path.join(self.current_sequence_path, bind.labels_path))
                 self.logger.info(f"Created labels path: {os.path.join(self.current_sequence_path, bind.labels_path)}")
 
     def _setup_calib_file(self):
         """创建标定文件."""
         # 寻找 calib bind 和 pose bind
-        calib_bind = next((bind for bind in self.binds if isinstance(bind, self.CalibTargetPair)), None)
-        pose_bind = next((bind for bind in self.binds if isinstance(bind, self.PoseTargetPair)), None)
+        calib_bind = next((bind for bind in self.binds if isinstance(bind, self.CalibTrBind)), None)
+        pose_bind = next((bind for bind in self.binds if isinstance(bind, self.PoseBind)), None)
         
         if calib_bind is None or pose_bind is None:
             raise ValueError("Calib bind or pose bind not found")
         
         self._promises.append(self.thread_pool.submit(self._dump_calib, calib_bind, pose_bind))
 
-    def _dump_image(self, bind: ImageTargetPair):
+    def _dump_image(self, bind: ImageBind):
         # 阻塞等待传感器更新
         bind.sensor.on_data_ready.wait()
         # 储存数据
@@ -129,7 +130,7 @@ class SemanticKittiDumper(DatasetDumper):
         # 打印日志
         self.logger.debug(f"[frame={bind.sensor.data.frame}] Dumped image to {path}")
 
-    def _dump_semantic_lidar(self, bind: SemanticLidarTargetPair):
+    def _dump_semantic_lidar(self, bind: SemanticLidarBind):
         # 阻塞等待传感器更新
         bind.sensor.on_data_ready.wait()
         
@@ -188,11 +189,11 @@ class SemanticKittiDumper(DatasetDumper):
         self.logger.debug(f"[frame={bind.sensor.data.frame}] Dumped pointcloud(shape={points.shape}) to {path_data}")
         self.logger.debug(f"[frame={bind.sensor.data.frame}] Dumped labels(shape={labels.shape}) to {path_labels}")
 
-    def _dump_timestamp(self, bind: DatasetDumper.SensorTargetPair):
+    def _dump_timestamp(self, bind: DatasetDumper.SensorBind):
         """导出时间戳, 以秒为单位, 使用科学计数法, 保留小数点后 6 位.
 
         Args:
-            bind (DatasetDumper.SensorTargetPair): 参考的传感器绑定
+            bind (DatasetDumper.SensorBind): 参考的传感器绑定
         """
         bind.sensor.on_data_ready.wait()
         if self._timestamp_offset is None:
@@ -203,11 +204,11 @@ class SemanticKittiDumper(DatasetDumper):
             
         self.logger.debug(f"[frame={bind.sensor.data.frame}] Dumped timestamp to {os.path.join(self.current_sequence_path, bind.data_path)}, value: {timestamp:.6e}")
 
-    def _dump_pose(self, bind: PoseTargetPair):
+    def _dump_pose(self, bind: PoseBind):
         """导出位姿数据, 是 3x4 的变换矩阵, 表示当前帧参考传感器到初始帧参考传感器的位姿变换.
 
         Args:
-            bind (PoseTargetPair): 参考的传感器绑定
+            bind (PoseBind): 参考的传感器绑定
         """
         bind.sensor.on_data_ready.wait()
         
@@ -248,7 +249,7 @@ class SemanticKittiDumper(DatasetDumper):
             f.write(f"{pose_matrix}\n")
         self.logger.debug(f"[frame={bind.sensor.data.frame}] Dumped pose to {path}")
 
-    def _dump_calib(self, bind_calib: CalibTargetPair, bind_pose: PoseTargetPair):
+    def _dump_calib(self, bind_calib: CalibTrBind, bind_pose: PoseBind):
         # 阻塞等待传感器更新
         bind_calib.sensor.on_data_ready.wait()
         bind_pose.sensor.on_data_ready.wait()
@@ -256,7 +257,7 @@ class SemanticKittiDumper(DatasetDumper):
         # 准备对象
         target = bind_calib.sensor
         cam_0 = bind_pose.sensor
-        other_cams = set(bind.sensor for bind in self.binds if isinstance(bind, self.ImageTargetPair) and bind.sensor != cam_0)
+        other_cams = set(bind.sensor for bind in self.binds if isinstance(bind, self.ImageBind) and bind.sensor != cam_0)
         # 确保cam_0在第一位
         cams = [cam_0] + list(other_cams)
         
