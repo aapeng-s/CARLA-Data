@@ -10,6 +10,8 @@ from src.semantic_kitti import SemanticKittiDumper
 
 def main(*, fps: int = 20):
     with CarlaContext(log_level=logging.DEBUG) as cc, ManualExecutor(cc, fixed_delta_seconds=1/fps) as exe:
+        cc.reload_world('Town01')
+        
         ego_vehicle: Vehicle = (cc.actor_factory
             .create(Vehicle, from_blueprint='vehicle.tesla.model3')
             .with_name("ego_vehicle")
