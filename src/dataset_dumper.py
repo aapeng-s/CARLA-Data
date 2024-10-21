@@ -4,6 +4,7 @@ from datetime import datetime
 from dataclasses import dataclass
 from typing import Optional, List, Set
 from concurrent.futures import ThreadPoolExecutor, Future, as_completed
+from contextlib import contextmanager
 
 from packages.carla1s.utils import get_logger
 from packages.carla1s.actors import Sensor

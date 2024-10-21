@@ -4,6 +4,7 @@ import numpy as np
 import copy
 from dataclasses import dataclass
 from typing import Optional
+from contextlib import contextmanager
 
 from packages.carla1s.actors import Sensor
 from packages.carla1s.tf import Point, CoordConverter, Transform, Coordinate
