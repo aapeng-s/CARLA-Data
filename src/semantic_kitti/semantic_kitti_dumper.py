@@ -204,7 +204,6 @@ class SemanticKittiDumper(DatasetDumper):
         seg[seg == 28] = 51  # guard rail - fence
         seg[seg == 29] = 60  # lane-marking
         seg[seg == 30] = 44  # parking
-        print(np.unique(seg))
 
         oid = bind.sensor.data.content[:, 4]
         labels = np.column_stack((seg.astype(np.uint16), oid.astype(np.uint16)))
@@ -252,19 +251,12 @@ class SemanticKittiDumper(DatasetDumper):
             self._pose_offset_coordinate = Coordinate(self._pose_offset).change_orientation(CoordConverter.CARLA_CAM_TO_KITTI_CAM_ORIENTATION)
 
         # # 计算当前帧的位姿相对初始帧的位姿
-        # relative_pose = (CoordConverter
-        #                  .from_system(pose)
-        #                  .apply_transform(self._pose_offset)
-        #                  .change_orientation(CoordConverter.CARLA_CAM_TO_KITTI_CAM)
-        #                  .apply_transform(CoordConverter.CARLA_CAM_TO_KITTI_CAM)
-        #                  .get_single())
 
         cami_on_cam0_kittiori_kitticoord = (Coordinate(pose)
                                             .change_orientation(CoordConverter.CARLA_CAM_TO_KITTI_CAM_ORIENTATION)
                                             .apply_transform(Transform(matrix=self._pose_offset_coordinate.data.matrix)))
         
         # 将位姿矩阵转换为 3x4 的变换矩阵
-        # pose_matrix = relative_pose.matrix[:3, :]
         pose_matrix = cami_on_cam0_kittiori_kitticoord.data.matrix[:3, :]
 
         # 横向展开, 表示为 1x12 的行向量, 并处理为小数点后 6 位的科学计数法表示, 以空格分隔
@@ -304,7 +296,6 @@ class SemanticKittiDumper(DatasetDumper):
         def compute_projection_matrix(K, R, t):
             # extern matrix
             RT = np.hstack((R, t))
-            # project matrix P = K[R|t]
             P = np.dot(K, RT)
             return P
 
@@ -317,7 +308,6 @@ class SemanticKittiDumper(DatasetDumper):
             image_height = int(cam.attributes['image_size_y'])
             fov = float(cam.attributes['fov'])
             
-            # print(f"image_width: {image_width}, image_height: {image_height}, fov: {fov}")
             
             K = compute_intrinsic_matrix(image_width, image_height, fov)
             
@@ -325,13 +315,7 @@ class SemanticKittiDumper(DatasetDumper):
             cam_on_cam0_kittiori_kitticoord = (Coordinate(cam.data.transform)
                                                .change_orientation(CoordConverter.CARLA_CAM_TO_KITTI_CAM_ORIENTATION)
                                                .apply_transform(Transform(matrix=cam0_on_cam0_kittiori_carlacoord.data.matrix)))
-            # T = (CoordConverter
-            #      .from_system(cam.data.transform)
-            #      .apply_transform(cam_0.data.transform)
-            #      .change_orientation(CoordConverter.CARLA_CAM_TO_KITTI_CAM)
-            #      .apply_transform(CoordConverter.CARLA_CAM_TO_KITTI_CAM)
-            #      .get_single())
-            # T = np.dot(np.linalg.inv(cam_0.data.transform.matrix), cam.data.transform.matrix)
+
             R = cam_on_cam0_kittiori_kitticoord.data.matrix[:3, :3]
             t = cam_on_cam0_kittiori_kitticoord.data.matrix[:3, -1].reshape(3, 1)
             P = compute_projection_matrix(K, R, t)
@@ -349,13 +333,6 @@ class SemanticKittiDumper(DatasetDumper):
                                              .apply_transform(Transform(matrix=cam0_on_cam0_kittiori_carlacoord.data.matrix)))
         Tr = lidar_on_cam0_kittiori_kitticoord.data.matrix
 
-        # T = (CoordConverter
-        #      .from_system(target.data.transform)
-        #      .apply_transform(cam_0.data.transform)
-        #      .change_orientation(CoordConverter.CARLA_CAM_TO_KITTI_CAM)
-        #      .apply_transform(CoordConverter.CARLA_CAM_TO_KITTI_CAM)
-        #      .get_single())
-        # T = np.dot(np.linalg.inv(cam_0.data.transform.matrix), target.data.transform.matrix)
         with open(path, 'a') as calibfile:
             calibfile.write("Tr:")
             string = ' '.join(['{:.12e}'.format(value) for row in Tr[:3, :] for value in row])
