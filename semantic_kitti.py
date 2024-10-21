@@ -72,14 +72,14 @@ def main(*, fps: int = 20):
         
         # SETUP DUMPER
         dumper = SemanticKittiDumper('/home/isleep/Documents/temp_kitti')
-        dumper.bind_camera(cam_0_depth, "image_0")
-        dumper.bind_camera(cam_1_depth, "image_1")
-        dumper.bind_camera(cam_0_rgb, "image_2")
-        dumper.bind_camera(cam_1_rgb, "image_3")
-        dumper.bind_semantic_lidar(semantic_lidar, "velodyne", "labels")
-        dumper.bind_timestamp(cam_0_rgb, "times.txt")
-        dumper.bind_pose(cam_0_rgb, "poses.txt")
-        dumper.bind_calib(semantic_lidar, "calib.txt")
+        dumper.bind_camera(cam_0_depth, data_folder="image_0")
+        dumper.bind_camera(cam_1_depth, data_folder="image_1")
+        dumper.bind_camera(cam_0_rgb, data_folder="image_2")
+        dumper.bind_camera(cam_1_rgb, data_folder="image_3")
+        dumper.bind_semantic_lidar(semantic_lidar, data_folder="velodyne", labels_folder="labels")
+        dumper.bind_timestamp(cam_0_rgb, file_path="times.txt")
+        dumper.bind_pose(cam_0_rgb, file_path="poses.txt")
+        dumper.bind_calib(tr_sensor=semantic_lidar, file_path="calib.txt")
 
         dumper.create_sequence()
         

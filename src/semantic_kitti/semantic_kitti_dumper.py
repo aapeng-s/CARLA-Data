@@ -79,27 +79,43 @@ class SemanticKittiDumper(DatasetDumper):
 
         return self
     
-    def bind_camera(self, sensor: Sensor, data_path: str) -> 'DatasetDumper':
+    def bind_camera(self, 
+                    sensor: Sensor, 
+                    *,
+                    data_folder: str) -> 'DatasetDumper':
         self._binds.append(self.ImageBind(sensor, data_path))
         return self
 
-    def bind_semantic_lidar(self, sensor: Sensor, data_path: str, labels_path: str) -> 'DatasetDumper':
+    def bind_semantic_lidar(self, 
+                            sensor: Sensor, 
+                            *,
+                            data_folder: str, 
+                            labels_folder: str) -> 'DatasetDumper':
         self._binds.append(self.SemanticLidarBind(sensor, data_path, labels_path))
         return self
 
-    def bind_timestamp(self, sensor: Sensor, path: str):
-        if os.path.splitext(path)[1] == '':
+    def bind_timestamp(self, 
+                       sensor: Sensor, 
+                       *,
+                       file_path: str) -> 'DatasetDumper':
+        if os.path.splitext(file_path)[1] == '':
             raise ValueError(f"Path {path} is a folder, not a file.")
-        self.binds.append(self.TimestampBind(sensor, path))
+        self.binds.append(self.TimestampBind(sensor, file_path))
         
-    def bind_pose(self, sensor: Sensor, path: str):
-        if os.path.splitext(path)[1] == '':
-            raise ValueError(f"Path {path} is a folder, not a file.")
+    def bind_pose(self, 
+                  sensor: Sensor, 
+                  *,
+                  file_path: str) -> 'DatasetDumper':
+        if os.path.splitext(file_path)[1] == '':
+            raise ValueError(f"Path {file_path} is a folder, not a file.")
         self.binds.append(self.PoseBind(sensor, path))
         
-    def bind_calib(self, sensor: Sensor, path: str):
-        if os.path.splitext(path)[1] == '':
-            raise ValueError(f"Path {path} is a folder, not a file.")
+    def bind_calib(self, 
+                   *, 
+                   tr_sensor: Sensor, 
+                   file_path: str) -> 'DatasetDumper':
+        if os.path.splitext(file_path)[1] == '':
+            raise ValueError(f"Path {file_path} is a folder, not a file.")
         self.binds.append(self.CalibTrBind(sensor, path))
 
     def _setup_content_folder(self):
