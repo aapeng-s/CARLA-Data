@@ -274,7 +274,7 @@ class NuScenesDB:
 
         Args:
             category (str, optional): 地图的分类描述, 如: 'semantic_prior'. 默认为 'UNKNOWN'.
-            filename (str, optional): 地图文件名, 指向地图的占用图像, 如: 'maps/sample.png'. 默认为 'UNKNOWN'.
+            filename (str, optional): 地图文件名, ��向地图的占用图像, 如: 'maps/sample.png'. 默认为 'UNKNOWN'.
 
         Returns:
             str: 插入数据库的 token
@@ -398,7 +398,7 @@ class NuScenesDB:
                      timestamp: float = time.time(),
                      translation: List[float],
                      rotation: List[float]) -> str:
-        """增加一条 ego_pose 记录
+        """增加一�� ego_pose 记录
 
         Args:
             token (str, optional): 需要与 sample_data 表中的 token 一致
@@ -890,7 +890,19 @@ class NuScenesDB:
         ''')
         rows = self._cursor.fetchall()
         columns = [column[0] for column in self._cursor.description]
-        return json.dumps([dict(zip(columns, row)) for row in rows])
+        
+        result = []
+        for row in rows:
+            row_dict = dict(zip(columns, row))
+            row_dict['attribute_tokens'] = json.loads(row_dict['attribute_tokens'])
+            row_dict['translation'] = self._decode_json_list(row_dict['translation'])
+            row_dict['size'] = self._decode_json_list(row_dict['size'])
+            row_dict['rotation'] = self._decode_json_list(row_dict['rotation'])
+            row_dict['next'] = row_dict['next'] if row_dict['next'] is not None else ''
+            row_dict['prev'] = row_dict['prev'] if row_dict['prev'] is not None else ''
+            result.append(row_dict)
+        
+        return json.dumps(result)
 
     def get_category_token_by_index(self, index: int) -> str:
         """根据 index 获取 category 表中的 token"""
