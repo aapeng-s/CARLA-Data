@@ -274,7 +274,7 @@ class NuScenesDB:
 
         Args:
             category (str, optional): 地图的分类描述, 如: 'semantic_prior'. 默认为 'UNKNOWN'.
-            filename (str, optional): 地图文件名, ��向地图的占用图像, 如: 'maps/sample.png'. 默认为 'UNKNOWN'.
+            filename (str, optional): 地图文件名, 指向地图的占用图像, 如: 'maps/sample.png'. 默认为 'UNKNOWN'.
 
         Returns:
             str: 插入数据库的 token
@@ -398,7 +398,7 @@ class NuScenesDB:
                      timestamp: float = time.time(),
                      translation: List[float],
                      rotation: List[float]) -> str:
-        """增加一�� ego_pose 记录
+        """增加一条 ego_pose 记录
 
         Args:
             token (str, optional): 需要与 sample_data 表中的 token 一致
