@@ -102,7 +102,7 @@ def main(*,
         dumper.bind_camera(cam_back, channel="CAM_BACK")
         dumper.bind_camera(cam_back_left, channel="CAM_BACK_LEFT")
         dumper.bind_camera(cam_back_right, channel="CAM_BACK_RIGHT")
-        dumper.bind_semantic_lidar(semantic_lidar, channel="SEMANTIC_LIDAR")
+        dumper.bind_semantic_lidar(semantic_lidar, channel="LIDAR_TOP")
         dumper.bind_vehicle(ego_vehicle)
 
         # EXEC DUMP
