@@ -890,7 +890,19 @@ class NuScenesDB:
         ''')
         rows = self._cursor.fetchall()
         columns = [column[0] for column in self._cursor.description]
-        return json.dumps([dict(zip(columns, row)) for row in rows])
+        
+        result = []
+        for row in rows:
+            row_dict = dict(zip(columns, row))
+            row_dict['attribute_tokens'] = json.loads(row_dict['attribute_tokens'])
+            row_dict['translation'] = self._decode_json_list(row_dict['translation'])
+            row_dict['size'] = self._decode_json_list(row_dict['size'])
+            row_dict['rotation'] = self._decode_json_list(row_dict['rotation'])
+            row_dict['next'] = row_dict['next'] if row_dict['next'] is not None else ''
+            row_dict['prev'] = row_dict['prev'] if row_dict['prev'] is not None else ''
+            result.append(row_dict)
+        
+        return json.dumps(result)
 
     def get_category_token_by_index(self, index: int) -> str:
         """根据 index 获取 category 表中的 token"""
