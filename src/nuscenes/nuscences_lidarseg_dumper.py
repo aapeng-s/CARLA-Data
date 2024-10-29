@@ -279,7 +279,7 @@ class NuScenesLidarsegDumper(DatasetDumper):
         self.logger.debug(f"Created '{bind.channel}' sample_data record with token: '{token}'")
         self.logger.debug(f"Created '{bind.channel}' ego_pose record with token: '{token}'")
     
-    def _dump_lidar_with_sample_data_and_lidarseg(self, bind: LidarBind, vehicle_bind: VehicleBind):
+    def _dump_lidar_with_sample_data_and_lidarseg(self, bind: SemanticLidarBind, vehicle_bind: VehicleBind):
         # 阻塞等待传感器更新
         bind.actor.on_data_ready.wait()
         
@@ -289,7 +289,10 @@ class NuScenesLidarsegDumper(DatasetDumper):
         path = os.path.join(self.current_sequence_path, short_path)
         
         # 储存点云数据
-        data = np.insert(bind.actor.data.content, 4, np.arange(1, bind.actor.data.content.shape[0] + 1), axis=1)
+        # WARNING: 这里使用了语义分割雷达
+        data = bind.actor.data.content.copy() # FORMAT: [x, y, z, semantic_id, object_id]
+        data[:, 3] = 1  # intensity override
+        data[:, 4] = 0  # ring index override
         data.tofile(path)
         self.logger.debug(f"Dumped '{bind.channel}' lidar to {path}, points: {data.shape[0]}")
         
