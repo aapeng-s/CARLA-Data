@@ -346,6 +346,7 @@ class NuScenesLidarsegDumper(DatasetDumper):
         seg_id[index_ego] = self.MAPPING_SEG_NUSCENES_EGO
         
         # 写入数据
+        seg_id = seg_id.astype('uint8')
         seg_id.tofile(path_lidarseg)
         self.logger.debug(f"Dumped '{bind.channel}' lidarseg to {path_lidarseg}, points: {seg_id.shape[0]}")
 
